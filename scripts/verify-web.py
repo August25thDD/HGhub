@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--origin', default='http://127.0.0.1:8900')
 parser.add_argument('--password-file', type=Path, default=Path('.clawbench/private/web-password.txt'))
 parser.add_argument('--username', default='hghub')
+parser.add_argument('--user-agent', default='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15')
 parser.add_argument('--report', type=Path, default=Path('.clawbench/reports/web-live.json'))
 args = parser.parse_args()
 origin = args.origin.rstrip('/')
@@ -23,7 +24,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 def fetch(opener, path, data=None, content_type=None):
-    headers = {'Origin': origin}
+    # Use a browser User-Agent when exercising a hostname with Cloudflare BIC enabled.
+    headers = {'Origin': origin, 'User-Agent': args.user_agent}
     if content_type:
         headers['Content-Type'] = content_type
     req = urllib.request.Request(origin + path, data=data, headers=headers)
@@ -60,6 +62,8 @@ try:
     status, headers, _ = fetch(authenticated, '/login', form, 'application/x-www-form-urlencoded')
     assert status == 303 and headers['Location'] == '/', 'password login failed'
     assert 'HttpOnly' in headers['Set-Cookie'] and 'SameSite=Strict' in headers['Set-Cookie']
+    if origin.startswith('https://'):
+        assert '; Secure' in headers['Set-Cookie']
     report['checks']['password_login'] = 'PASS'
     status, _, html = fetch(authenticated, '/')
     assert status == 200 and b'<div id="root">' in html

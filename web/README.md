@@ -34,7 +34,17 @@ node scripts/verify-web-browser.cjs
 
 systemd 单元为当前账号的 `hghub-web.service`，安装脚本启用并启动它。主机须启用当前账号的 linger，才能在未登录时随开机启动。脚本回读 `enabled`、`active` 和 `Linger`，不会擅自以 root 修改主机配置。
 
-部署顺序：先核对云账号注册邮箱、租户和已有实例，在本机验通以上服务和真实媒体链路，然后配置公网 origin、监听/反向代理以及云安全列表。公网验收须另从外部客户端执行验证脚本：匿名被挡回登录页；密码登录后真实 feed 和详情正常；封面、HLS 清单、密钥及分片返回成功。**本机通过不代表公网部署完成。**
+部署顺序：先核对云账号注册邮箱、租户和已有实例，在本机验通以上服务和真实媒体链路，然后配置公网入口。使用 Cloudflare Tunnel 时保持 `127.0.0.1:8900` 监听，无需开放云安全列表的 8900 入站端口；直连或自有反向代理方案再按实际需要配置网络规则。公网验收须通过公网域名执行验证脚本：匿名被挡回登录页；账号密码登录后真实 feed 和详情正常；封面、HLS 清单、密钥及分片返回成功。**本机通过不代表公网部署完成。**
+
+Cloudflare Tunnel 部署配置约定：
+
+- 创建专用 named tunnel，将公开子域名路由到 `http://127.0.0.1:8900`，最后一条 ingress 使用 `http_status:404`。
+- 本机配置存于 `.clawbench/private/cloudflared.yml`，隧道凭据仅由 `cloudflared` 保存在当前账号的私有目录中，不进入 Git。
+- 将 `HGHUB_PUBLIC_ORIGIN` 设置为实际 HTTPS origin，`originRequest.httpHostHeader` 与该公网主机名保持一致，然后重启 `hghub-web.service`。
+- 用当前账号的 `hghub-tunnel.service` 常驻运行隧道，启用开机自启；与 `hghub-web.service` 一起回读 `active`、`enabled` 和当前账号的 `Linger=yes`。
+- 访问凭据保存在 `.clawbench/private/web-login.txt`，公网验收记录使用 `.clawbench/reports/web-public.json`；浏览器报告记录桌面与 iPhone WebKit 模拟验证，不能当作实体 iPhone 实测。
+- Workers 发布权限不等于 Tunnel/DNS 管理权限。先实测现有授权；需要补充时使用官方 `cloudflared tunnel login` 浏览器流程，不传抄令牌。
+- 验收客户端默认使用浏览器 User-Agent，以兼容 Cloudflare 浏览器完整性检查。可用 `--user-agent` 显式指定；应用的账号密码校验、同源校验和 Cookie 安全属性仍须全部通过。
 
 例如公网 origin 已配置为自己的 HTTPS 域名后，从外部环境运行：
 
