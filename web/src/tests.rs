@@ -4,6 +4,7 @@ use tower::ServiceExt;
 
 fn state() -> WebState {
     WebState {
+        username: "hghub".into(),
         hash: make_hash(b"local-test-password-123").unwrap(),
         origin: "http://localhost:8900".into(),
         secure: false,
@@ -79,18 +80,35 @@ async fn login_logout_and_cookie_revocation() {
     assert_eq!(page.headers()["referrer-policy"], "same-origin");
     let wrong = app
         .clone()
-        .oneshot(request("POST", "/login", None, "password=incorrect"))
+        .oneshot(request(
+            "POST",
+            "/login",
+            None,
+            "username=hghub&password=incorrect",
+        ))
         .await
         .unwrap();
     assert_eq!(wrong.status(), StatusCode::UNAUTHORIZED);
     assert!(!wrong.headers().contains_key("set-cookie"));
+    let wrong_user = app
+        .clone()
+        .oneshot(request(
+            "POST",
+            "/login",
+            None,
+            "username=other&password=local-test-password-123",
+        ))
+        .await
+        .unwrap();
+    assert_eq!(wrong_user.status(), StatusCode::UNAUTHORIZED);
+    assert!(!wrong_user.headers().contains_key("set-cookie"));
     let good = app
         .clone()
         .oneshot(request(
             "POST",
             "/login",
             None,
-            "password=local-test-password-123",
+            "username=hghub&password=local-test-password-123",
         ))
         .await
         .unwrap();
@@ -133,7 +151,12 @@ async fn login_logout_and_cookie_revocation() {
 async fn csrf_and_unexpected_hosts_are_rejected() {
     let app = router(state(), std::path::Path::new("../dist"));
     for origin in [None, Some("https://other.example")] {
-        let mut req = request("POST", "/login", None, "password=local-test-password-123");
+        let mut req = request(
+            "POST",
+            "/login",
+            None,
+            "username=hghub&password=local-test-password-123",
+        );
         req.headers_mut().remove("origin");
         if let Some(origin) = origin {
             req.headers_mut().insert("origin", origin.parse().unwrap());
@@ -166,7 +189,7 @@ async fn failed_login_attempts_are_limited() {
             "POST",
             "/login",
             None,
-            "password=local-test-password-123"
+            "username=hghub&password=local-test-password-123"
         ))
         .await
         .unwrap()

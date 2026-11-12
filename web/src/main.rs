@@ -56,6 +56,7 @@ struct BrowserSession {
 }
 #[derive(Clone)]
 struct WebState {
+    username: String,
     hash: String,
     origin: String,
     secure: bool,
@@ -156,6 +157,7 @@ async fn login_page(State(state): State<WebState>, headers: HeaderMap) -> Respon
 
 #[derive(Deserialize)]
 struct LoginForm {
+    username: String,
     password: String,
 }
 
@@ -192,10 +194,10 @@ async fn login(
     })
     .await
     .unwrap_or(false);
-    if !valid {
+    if !valid || form.username != state.username {
         return (
             StatusCode::UNAUTHORIZED,
-            Html(LOGIN.replace("{{ERROR}}", "密码不正确")),
+            Html(LOGIN.replace("{{ERROR}}", "账号或密码不正确")),
         )
             .into_response();
     }
@@ -422,6 +424,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     let hash_file = std::env::var("HGHUB_PASSWORD_HASH_FILE")?;
+    let username = std::env::var("HGHUB_USERNAME")?;
+    if username.trim().is_empty() || username.len() > 128 {
+        return Err("HGHUB_USERNAME must contain 1 to 128 bytes".into());
+    }
     let hash = std::fs::read_to_string(hash_file)?.trim().to_owned();
     PasswordHash::new(&hash).map_err(|_| "invalid password hash")?;
     let data = PathBuf::from(std::env::var("HGHUB_DATA_DIR").unwrap_or_else(|_| "web-data".into()));
@@ -434,6 +440,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("web build dist/index.html is missing".into());
     }
     let state = WebState {
+        username,
         hash,
         secure: url.scheme() == "https",
         origin,

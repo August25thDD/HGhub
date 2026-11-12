@@ -29,6 +29,7 @@ const report = [];
       });
       await page.goto(origin);
       await page.waitForURL('**/login');
+      await page.getByLabel('账号', { exact: true }).fill(process.env.HGHUB_TEST_USERNAME || 'hghub');
       await page.getByLabel('访问密码').fill(password);
       await page.getByRole('button', { name: '登录', exact: true }).click();
       await page.waitForURL(origin + '/');

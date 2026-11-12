@@ -2,7 +2,7 @@
 
 本目录是独立 axum HTTP 服务，直接编译 `src-tauri/src/` 中的 API、网络策略、会话、媒体和解密模块，不依赖 Tauri、GTK 或桌面环境。前端以 `VITE_HGHUB_WEB=1` 构建，通过 `src/bridge.ts` 将调用发送到同源 `/api/invoke/{cmd}`。`/media/img`、`/media/hls`、`/media/seg` 复用 Rust 媒体层，HLS 的所有资源地址都改写到同源代理。
 
-所有页面、静态资源、业务 API 和媒体都受访问密码保护，只有登录表单允许匿名访问。服务校验 Host 和写请求 Origin，使用 Argon2id 校验密码，Cookie 为 HttpOnly / SameSite=Strict；配置 HTTPS origin 时同时设置 Secure。会话过期或服务重启需要重新登录，设置页可退出网页版。不同浏览器的上游账号凭据按会话隔离，不共享或持久化到服务账号。
+所有页面、静态资源、业务 API 和媒体都受账号及密码保护，只有登录表单允许匿名访问。服务校验 Host 和写请求 Origin，使用 Argon2id 校验密码，Cookie 为 HttpOnly / SameSite=Strict；配置 HTTPS origin 时同时设置 Secure。会话过期或服务重启需要重新登录，设置页可退出网页版。不同浏览器的上游账号凭据按会话隔离，不共享或持久化到服务账号。
 
 构建与测试：
 
@@ -24,6 +24,7 @@ node scripts/verify-web-browser.cjs
 
 | 参数 | 初始值 / 用途 |
 | --- | --- |
+| `HGHUB_USERNAME` | 私人登录账号，初始值 `hghub` |
 | `HGHUB_LISTEN` | `127.0.0.1:8900`，先只监听本机 |
 | `HGHUB_PUBLIC_ORIGIN` | `http://127.0.0.1:8900`，须与实际浏览器访问的 origin 完全一致 |
 | `HGHUB_PASSWORD_HASH_FILE` | Argon2 密码散列文件的绝对路径 |

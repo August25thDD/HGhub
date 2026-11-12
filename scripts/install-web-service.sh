@@ -21,12 +21,16 @@ fi
 if [[ ! -f "$private_dir/web.env" ]]; then
   cat > "$private_dir/web.env" <<EOF
 HGHUB_LISTEN=127.0.0.1:8900
+HGHUB_USERNAME=hghub
 HGHUB_PUBLIC_ORIGIN=http://127.0.0.1:8900
 HGHUB_PASSWORD_HASH_FILE=$private_dir/web-password.hash
 HGHUB_DATA_DIR=$data_dir
 HGHUB_DIST=$project_dir/dist
 HGHUB_STRICT=1
 EOF
+fi
+if ! grep -q '^HGHUB_USERNAME=' "$private_dir/web.env"; then
+  printf 'HGHUB_USERNAME=hghub\n' >> "$private_dir/web.env"
 fi
 cat > "$HOME/.config/systemd/user/hghub-web.service" <<EOF
 [Unit]

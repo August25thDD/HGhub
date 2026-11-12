@@ -17,10 +17,12 @@
 </head>
 <body><main>
   <h1>HG<span>hub</span></h1>
-  <p>输入访问密码，打开你的私人放映室。</p>
+  <p>登录你的私人放映室。</p>
   <form method="post" action="/login">
+    <label for="username">账号</label>
+    <input id="username" name="username" type="text" autocomplete="username" required autofocus>
     <label for="password">访问密码</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
     <button type="submit">登录</button>
     <p class="error" role="alert">{{ERROR}}</p>
   </form>

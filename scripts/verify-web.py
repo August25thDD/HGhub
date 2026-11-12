@@ -12,6 +12,7 @@ from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument('--origin', default='http://127.0.0.1:8900')
 parser.add_argument('--password-file', type=Path, default=Path('.clawbench/private/web-password.txt'))
+parser.add_argument('--username', default='hghub')
 parser.add_argument('--report', type=Path, default=Path('.clawbench/reports/web-live.json'))
 args = parser.parse_args()
 origin = args.origin.rstrip('/')
@@ -55,7 +56,7 @@ try:
     status, _, _ = fetch(anonymous, '/api/invoke/api_feed', b'{}', 'application/json')
     assert status == 401
     report['checks']['anonymous_gate'] = 'PASS'
-    form = urllib.parse.urlencode({'password': args.password_file.read_text().strip()}).encode()
+    form = urllib.parse.urlencode({'username': args.username, 'password': args.password_file.read_text().strip()}).encode()
     status, headers, _ = fetch(authenticated, '/login', form, 'application/x-www-form-urlencoded')
     assert status == 303 and headers['Location'] == '/', 'password login failed'
     assert 'HttpOnly' in headers['Set-Cookie'] and 'SameSite=Strict' in headers['Set-Cookie']
