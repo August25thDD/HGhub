@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#141414">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>登录 · HGhub</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#141414;color:#f4f4f4;font:16px system-ui,sans-serif}
+    body{min-height:100dvh;display:grid;place-items:center;padding:28px}main{width:100%;max-width:360px}
+    h1{font-size:38px;letter-spacing:-2px;margin:0 0 12px}h1 span{font-weight:350;color:#a3a3a3}p{color:#a3a3a3;line-height:1.6}
+    label{display:block;margin:32px 0 10px;font-size:14px}input,button{font:inherit;width:100%;border-radius:12px;padding:15px}
+    input{border:1px solid #444;color:#fff;background:#202020}input:focus{outline:2px solid #cfec7b;outline-offset:2px}
+    button{margin-top:18px;border:0;background:#cfec7b;color:#141414;font-weight:650;cursor:pointer}.error{color:#ffadad;min-height:24px;font-size:14px}
+  </style>
+</head>
+<body><main>
+  <h1>HG<span>hub</span></h1>
+  <p>输入访问密码，打开你的私人放映室。</p>
+  <form method="post" action="/login">
+    <label for="password">访问密码</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+    <button type="submit">登录</button>
+    <p class="error" role="alert">{{ERROR}}</p>
+  </form>
+</main></body>
+</html>

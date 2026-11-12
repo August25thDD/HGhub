@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore, type Page, type Tab } from "./store";
 import { isMobile, selfTest } from "./api";
-import { addPluginListener, invoke } from "@tauri-apps/api/core";
+import { addPluginListener } from "@tauri-apps/api/core";
+import { invoke, isWeb } from "./bridge";
 import { runBack } from "./back";
 import Home from "./pages/Home";
 import Search, { RankPage } from "./pages/Search";
@@ -156,7 +157,7 @@ function DesktopShell() {
         <ShellInner collapsed={collapsed || theater} theater={theater} />
       </div>
       {/* 边缘缩放热区只对无边框窗口（Windows）有效，macOS 走原生窗口边框 */}
-      {platform === "windows" && <ResizeHandles />}
+      {!isWeb && platform === "windows" && <ResizeHandles />}
     </div>
   );
 }
@@ -249,7 +250,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (platform !== "android") return undefined;
+    if (isWeb || platform !== "android") return undefined;
     let disposed = false;
     let handle: { unregister: () => Promise<void> } | null = null;
     addPluginListener("app", "back-button", () => backRef.current())

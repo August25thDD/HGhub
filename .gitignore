@@ -17,6 +17,9 @@ src-tauri/gen/
 .DS_Store
 Thumbs.db
 *.log
+.clawbench/
+web/target/
+scripts/__pycache__/
 
 # 签名与密钥（务必不要提交）
 *.keystore

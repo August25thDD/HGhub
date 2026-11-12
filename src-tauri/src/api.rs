@@ -3,8 +3,12 @@
 use crate::net::{base, edge};
 use crate::session::SessionStore;
 use serde_json::{json, Value};
+#[cfg(not(feature = "web"))]
 use tauri::State;
+#[cfg(not(feature = "web"))]
 use tauri_plugin_opener::OpenerExt;
+#[cfg(feature = "web")]
+type State<'a, T> = &'a T;
 
 pub struct Api {
     pub session: SessionStore,
@@ -41,7 +45,8 @@ impl Api {
 }
 
 /// API/运行错误与自检统一写入 debug.log，每行附 RFC 3339 UTC 时间和进程编号。
-#[tauri::command]
+#[cfg(not(feature = "web"))]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn debug_log(app: tauri::AppHandle, msg: String) -> Result<(), String> {
     use tauri::Manager;
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
@@ -49,7 +54,7 @@ pub async fn debug_log(app: tauri::AppHandle, msg: String) -> Result<(), String>
 }
 
 /// 网络自检：系统代理 / DNS / 连通性快照，用于远程定位「打不开」。
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn net_diag() -> Result<Value, String> {
     Ok(crate::net::diagnose().await)
 }
@@ -57,7 +62,7 @@ pub async fn net_diag() -> Result<Value, String> {
 /* ───────────────────────── 线路（数据源） ───────────────────────── */
 
 /// 当前线路 + 固定线路清单（镜像线路另外按需拉取）。
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn line_state() -> Result<Value, String> {
     Ok(json!({
         "base": base(),
@@ -67,7 +72,7 @@ pub async fn line_state() -> Result<Value, String> {
 }
 
 /// 手动切换线路：立即生效并落盘（下次启动沿用）。
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn line_set(state: State<'_, Api>, url: String) -> Result<String, String> {
     let previous = base();
     let next = crate::net::set_base(&url)?;
@@ -78,7 +83,7 @@ pub async fn line_set(state: State<'_, Api>, url: String) -> Result<String, Stri
 }
 
 /// 从地址发布页抓镜像线路（只在用户点开「线路」时调用）。
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn line_mirrors() -> Result<Value, String> {
     // 用户手动点「刷新 / 打开线路」时重新读一次系统代理：代理软件开关过之后旧客户端会卡死
     crate::net::refresh_client();
@@ -86,7 +91,7 @@ pub async fn line_mirrors() -> Result<Value, String> {
 }
 
 /// 可达性探测：只报结果，不做自动检查 / 自动切换。
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn line_probe(urls: Vec<String>) -> Result<Value, String> {
     crate::net::refresh_client();
     Ok(crate::lines::probe(urls).await)
@@ -118,7 +123,7 @@ fn is_newer(latest: &str, current: &str) -> bool {
 }
 
 /// 对比 GitHub Release 的 tag 与当前版本（未认证 60 次/小时/IP，够用）。
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn check_update() -> Result<Value, String> {
     let current = env!("CARGO_PKG_VERSION").to_string();
     let url = format!("https://api.github.com/repos/{REPO}/releases/latest");
@@ -168,7 +173,8 @@ pub async fn check_update() -> Result<Value, String> {
 }
 
 /// 用系统默认浏览器打开链接（只允许 http/https）。
-#[tauri::command]
+#[cfg(not(feature = "web"))]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
     let target = crate::network_policy::parse_target(&url)?;
     // 固定使用默认处理器；不向前端暴露可指定程序的 opener 命令。
@@ -178,7 +184,8 @@ pub async fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> 
 }
 
 /// 切换移动端屏幕方向（iOS 原生旋转屏幕方向：横屏 Landscape / 竖屏 Portrait）。
-#[tauri::command]
+#[cfg(not(feature = "web"))]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn set_orientation(app: tauri::AppHandle, landscape: bool) -> Result<(), String> {
     #[cfg(target_os = "ios")]
     {
@@ -287,7 +294,7 @@ fn request_ios_orientation(landscape: bool) {
 
 /* ───────────────────────── 会话 ───────────────────────── */
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn app_boot(state: State<'_, Api>) -> Result<Value, String> {
     let origin = base();
     Ok(json!({
@@ -300,7 +307,7 @@ pub async fn app_boot(state: State<'_, Api>) -> Result<Value, String> {
 }
 
 /// 切换严格安全模式（关闭后回退到兼容清洗与网络守卫模式，立即生效并落盘）。
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn security_set(strict: bool) -> Result<bool, String> {
     crate::network_policy::set_strict_security(strict)?;
     crate::net::refresh_client();
@@ -311,7 +318,7 @@ pub async fn security_set(strict: bool) -> Result<bool, String> {
     Ok(crate::network_policy::strict_security())
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_login(
     state: State<'_, Api>,
     username: String,
@@ -339,7 +346,7 @@ pub async fn api_login(
     Ok(json!({ "user": user }))
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_register(
     state: State<'_, Api>,
     username: String,
@@ -376,7 +383,7 @@ pub async fn api_register(
     Ok(json!({ "user": user }))
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_logout(state: State<'_, Api>) -> Result<Value, String> {
     let origin = base();
     let token = state.session.token(&origin);
@@ -392,7 +399,7 @@ pub async fn api_logout(state: State<'_, Api>) -> Result<Value, String> {
     Ok(json!({ "ok": true }))
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_me(state: State<'_, Api>) -> Result<Value, String> {
     let origin = base();
     let token = state.session.token(&origin);
@@ -408,14 +415,14 @@ pub async fn api_me(state: State<'_, Api>) -> Result<Value, String> {
 
 /* ───────────────────────── 列表 ───────────────────────── */
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_feed(state: State<'_, Api>, page: u32, size: u32) -> Result<Value, String> {
     state
         .get(&format!("/api/videos?page={page}&size={size}"))
         .await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_category(
     state: State<'_, Api>,
     cate: String,
@@ -429,7 +436,7 @@ pub async fn api_category(
         .await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_rank(state: State<'_, Api>, kind: String) -> Result<Value, String> {
     let kind = match kind.as_str() {
         "recommend" | "potential" => kind,
@@ -438,7 +445,7 @@ pub async fn api_rank(state: State<'_, Api>, kind: String) -> Result<Value, Stri
     state.get(&format!("/api/ranks/{kind}")).await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_search(
     state: State<'_, Api>,
     q: String,
@@ -451,21 +458,21 @@ pub async fn api_search(
         .await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_posts(state: State<'_, Api>, page: u32, size: u32) -> Result<Value, String> {
     state
         .get(&format!("/api/posts?page={page}&size={size}"))
         .await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_post(state: State<'_, Api>, id: i64) -> Result<Value, String> {
     state.get(&format!("/api/posts/{id}")).await
 }
 
 /* ───────────────────────── 详情 / 播放 ───────────────────────── */
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_video(state: State<'_, Api>, id: i64) -> Result<Value, String> {
     state.get(&format!("/api/videos/{id}")).await
 }
@@ -496,7 +503,7 @@ fn has_play_url(info: &Value) -> bool {
         .is_some_and(|s| !s.is_empty())
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_play(state: State<'_, Api>, id: i64, ep: u32) -> Result<Value, String> {
     // 优先走新接口；失败或没有可用地址时再退回旧接口，两者都不行就返回新接口的结果/错误。
     let primary = state
@@ -529,7 +536,7 @@ pub async fn api_play(state: State<'_, Api>, id: i64, ep: u32) -> Result<Value, 
 
 /* ───────────────────────── 评论 / 互动 ───────────────────────── */
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_comments(
     state: State<'_, Api>,
     id: i64,
@@ -544,7 +551,7 @@ pub async fn api_comments(
         .await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_comment_send(
     state: State<'_, Api>,
     id: i64,
@@ -563,7 +570,7 @@ pub async fn api_comment_send(
     state.authed("POST", &path, Some(body)).await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_like(state: State<'_, Api>, id: i64, ep: u32, on: bool) -> Result<Value, String> {
     let method = if on { "POST" } else { "DELETE" };
     state
@@ -571,7 +578,7 @@ pub async fn api_like(state: State<'_, Api>, id: i64, ep: u32, on: bool) -> Resu
         .await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_collect(state: State<'_, Api>, id: i64, on: bool) -> Result<Value, String> {
     let method = if on { "POST" } else { "DELETE" };
     state
@@ -579,7 +586,7 @@ pub async fn api_collect(state: State<'_, Api>, id: i64, on: bool) -> Result<Val
         .await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_follow(state: State<'_, Api>, uid: i64, on: bool) -> Result<Value, String> {
     let method = if on { "POST" } else { "DELETE" };
     state
@@ -589,7 +596,7 @@ pub async fn api_follow(state: State<'_, Api>, uid: i64, on: bool) -> Result<Val
 
 /* ───────────────────────── 本地缓存 ───────────────────────── */
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn cache_clear() -> Result<(), String> {
     crate::media::clear_caches();
     Ok(())
@@ -597,7 +604,7 @@ pub async fn cache_clear() -> Result<(), String> {
 
 /* ───────────────────────── 吃瓜帖子互动 ───────────────────────── */
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_post_like(state: State<'_, Api>, id: i64, on: bool) -> Result<Value, String> {
     let method = if on { "POST" } else { "DELETE" };
     state
@@ -605,7 +612,7 @@ pub async fn api_post_like(state: State<'_, Api>, id: i64, on: bool) -> Result<V
         .await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_post_collect(state: State<'_, Api>, id: i64, on: bool) -> Result<Value, String> {
     let method = if on { "POST" } else { "DELETE" };
     state
@@ -613,7 +620,7 @@ pub async fn api_post_collect(state: State<'_, Api>, id: i64, on: bool) -> Resul
         .await
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "web"), tauri::command)]
 pub async fn api_post_comments(
     state: State<'_, Api>,
     id: i64,
